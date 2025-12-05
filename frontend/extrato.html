@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Extrato TechMarket</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#0f62fe;
+      --danger:#ff4d4f;
+      --success:#12b886;
+      --radius:12px;
+      --gap:12px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:#111827;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:16px;
+      box-sizing:border-box;
+    }
+
+    .wrap{
+      max-width:720px;
+      margin:0 auto;
+    }
+
+    header.card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:14px;
+      box-shadow:0 6px 18px rgba(15,23,42,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .account{
+      display:flex;
+      flex-direction:column;
+    }
+    .account .name{font-weight:600; font-size:1rem;}
+    .account .acc{color:var(--muted); font-size:0.85rem; margin-top:4px;}
+
+    .balance{
+      text-align:right;
+    }
+    .balance .label{font-size:0.8rem; color:var(--muted);}
+    .balance .value{font-weight:700; font-size:1.2rem; margin-top:4px;}
+
+    .controls{
+      display:flex;
+      gap:8px;
+      margin-bottom:12px;
+      align-items:center;
+    }
+    .controls input[type="date"],
+    .controls select{
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid #e6e9ef;
+      background:white;
+      font-size:0.9rem;
+    }
+    .controls .btn{
+      padding:8px 12px;
+      border-radius:10px;
+      border:none;
+      background:var(--accent);
+      color:white;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    .list{
+      display:block;
+      list-style:none;
+      padding:0;
+      margin:0 0 18px 0;
+    }
+
+    .tx{
+      background:var(--card);
+      border-radius:10px;
+      padding:12px;
+      margin-bottom:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      box-shadow:0 4px 12px rgba(15,23,42,0.04);
+      transition:transform .12s ease, box-shadow .12s ease;
+      will-change:transform;
+    }
+    .tx:hover{
+      transform:translateY(-2px);
+      box-shadow:0 10px 20px rgba(15,23,42,0.06);
+    }
+
+    .tx .meta{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .tx .meta .title{font-weight:600;}
+    .tx .meta .subtitle{font-size:0.85rem; color:var(--muted);}
+
+    .tx .amount{
+      text-align:right;
+      min-width:110px;
+    }
+    .tx .amount .value{font-weight:700;}
+    .tx .amount .date{font-size:0.82rem; color:var(--muted); margin-top:4px;}
+
+    .high-value{
+      border-left:6px solid var(--danger);
+    }
+    .high-value .amount .value{color:var(--danger);}
+
+    .credit .amount .value{color:var(--success);}
+    .debit .amount .value{color:#1f2937;}
+
+    @media(min-width:720px){
+      .controls{justify-content:space-between;}
+      header.card{padding:18px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="card" role="banner" aria-label="Resumo da conta">
+      <div class="account" aria-hidden="false">
+        <div class="name">Conta: TechMarket - 00012345-6</div>
+        <div class="acc">Titular: João da Silva</div>
+      </div>
+      <div class="balance" id="balanceBox">
+        <div class="label">Saldo disponível</div>
+        <div class="value" id="balanceValue">R$ 0,00</div>
+      </div>
+    </header>
+
+    <div class="controls" aria-hidden="false">
+      <div style="display:flex;gap:8px;flex:1">
+        <input type="date" id="fromDate" aria-label="Data inicial">
+        <input type="date" id="toDate" aria-label="Data final">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="typeFilter" aria-label="Filtrar tipo">
+          <option value="all">Todos</option>
+          <option value="credit">Crédito</option>
+          <option value="debit">Débito</option>
+        </select>
+        <button class="btn" id="applyFilter">Aplicar</button>
+      </div>
+    </div>
+
+    <ul class="list" id="txList" aria-live="polite"></ul>
+
+    <div style="font-size:0.9rem;color:var(--muted);text-align:center">
+      Exibindo transações recentes. Transações acima de <strong>R$ 5.000</strong> são destacadas.
+    </div>
+  </div>
+
+  <script>
+    // Dados de exemplo
+    const transactions = [
+      { id: "t1", title: "Venda - Pedido #3241", subtitle: "Cartão", date: "2025-11-30", value: 4120.50, type: "credit" },
+      { id: "t2", title: "Pagamento fornecedor", subtitle: "Boleto", date: "2025-11-29", value: 12500.00, type: "debit" },
+      { id: "t3", title: "Devolução - Pedido #3180", subtitle: "Estorno", date: "2025-11-27", value: 320.00, type: "debit" },
+      { id: "t4", title: "Venda - Pedido #3309", subtitle: "PIX", date: "2025-11-26", value: 8800.00, type: "credit" },
+      { id: "t5", title: "Tarifa mensal", subtitle: "Serviços", date: "2025-11-01", value: 39.90, type: "debit" },
+      { id: "t6", title: "Recebimento - Parceiro", subtitle: "Transferência", date: "2025-10-28", value: 480.00, type: "credit" },
+    ];
+
+    const TX_HIGH_VALUE = 5000;
+
+    function formatBRL(n){
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function calcBalance(list){
+      // Saldo inicial aproximado: soma créditos - débitos
+      return list.reduce((acc, t) => {
+        return t.type === 'credit' ? acc + t.value : acc - t.value;
+      }, 0);
+    }
+
+    function renderList(list){
+      const container = document.getElementById('txList');
+      container.innerHTML = '';
+      const frag = document.createDocumentFragment();
+
+      list.forEach(tx => {
+        const li = document.createElement('li');
+        li.className = 'tx ' + (tx.value > TX_HIGH_VALUE ? 'high-value ' : '') + (tx.type === 'credit' ? 'credit' : 'debit');
+        li.setAttribute('data-id', tx.id);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const title = document.createElement('div'); title.className = 'title'; title.textContent = tx.title;
+        const sub = document.createElement('div'); sub.className = 'subtitle'; sub.textContent = tx.subtitle;
+        meta.appendChild(title); meta.appendChild(sub);
+
+        const amount = document.createElement('div');
+        amount.className = 'amount';
+        const val = document.createElement('div'); val.className = 'value'; val.textContent = formatBRL(tx.value);
+        const date = document.createElement('div'); date.className = 'date'; date.textContent = new Date(tx.date).toLocaleDateString('pt-BR');
+        amount.appendChild(val); amount.appendChild(date);
+
+        li.appendChild(meta);
+        li.appendChild(amount);
+        frag.appendChild(li);
+      });
+
+      container.appendChild(frag);
+
+      // Atualiza saldo
+      document.getElementById('balanceValue').textContent = formatBRL(calcBalance(list));
+    }
+
+    // Filtro por tipo e período
+    function applyFilter(){
+      const from = document.getElementById('fromDate').value;
+      const to = document.getElementById('toDate').value;
+      const type = document.getElementById('typeFilter').value;
+
+      let filtered = transactions.slice();
+
+      if(from) filtered = filtered.filter(t => new Date(t.date) >= new Date(from));
+      if(to) filtered = filtered.filter(t => new Date(t.date) <= new Date(to));
+      if(type !== 'all') filtered = filtered.filter(t => t.type === type);
+
+      // Ordena por data desc
+      filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+      renderList(filtered);
+    }
+
+    document.getElementById('applyFilter').addEventListener('click', applyFilter);
+    const initial = transactions.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,10);
+    renderList(initial);
+  </script>
+</body>
+</html>
